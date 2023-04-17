@@ -1,59 +1,21 @@
 import { ethers } from 'ethers'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
-import Web3Modal from 'web3modal'
 import { marketplaceAddress } from "../../.config.js";
 import NFTMarketplace from '../../artifacts/contracts/NFTMarket.sol/NFTMarketplace.json';
+const ALCHEMY_HTTP_URL = process.env.ALCHEMY_HTTP_URL
 
 export default function Home() {
-  const web3ModalRef = useRef();
   const [nfts, setNfts] = useState([]);
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [waiting, setWaiting] = useState(false);
 
   useEffect(() => {
-    if (!walletConnected) {
-      web3ModalRef.current = new Web3Modal({
-        network: "mumbai",
-        providerOptions: {},
-        disableInjectedProvider: false,
-      });
-    }
-    connectWallet();
-
     loadNFTs()
-  }, [walletConnected]);
-
-  async function connectWallet() {
-    try {
-      await getProviderOrSigner();
-      setWalletConnected(true);      
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  async function getProviderOrSigner (needSigner = false) {
-    const connection = await web3ModalRef.current.connect();
-    const provider = new ethers.providers.Web3Provider(connection);
-
-    const { chainId } = await provider.getNetwork();
-    if (chainId !== 80001) {
-      window.alert("Change the network to Mumbai");
-      throw new Error("Change network to Mumbai");
-    }
-
-    if (needSigner) {
-      const signer = provider.getSigner();
-      return signer;
-    }
-    return provider;
-  };
+  }, []);
 
   async function loadNFTs() {
-
-    const provider = await getProviderOrSigner();
+    const provider = new ethers.providers.JsonRpcProvider(ALCHEMY_HTTP_URL)
     const contract = new ethers.Contract(marketplaceAddress, NFTMarketplace.abi, provider);
     const NFTs = await contract.fetchMarketNFTs();
 
@@ -86,8 +48,11 @@ export default function Home() {
   }
   
   async function buyNft(nft) {
-    /* needs the user to sign the transaction, so will use Web3Provider and sign it */
-    const signer = await getProviderOrSigner(true);
+    const web3Modal = new Web3Modal()
+    const connection = await web3Modal.connect()
+    const provider = new ethers.providers.Web3Provider(connection)
+    const signer = provider.getSigner()
+
     const contract = new ethers.Contract(marketplaceAddress, NFTMarketplace.abi, signer)
 
     /* user will be prompted to pay the asking proces to complete the transaction */
@@ -102,9 +67,8 @@ export default function Home() {
     loadNFTs()
   }
 
-  if (loading && !nfts.length) return (<h1 className="px-20 py-10 text-3xl">No items in marketplace</h1>);
-
-  if (waiting) return (<h1 className="px-20 py-10 text-3xl">Transaction in progress</h1>);
+  if (loading) return (<h1 className="px-20 py-10 text-3xl">Loading...</h1>);
+  if (!nfts.length) return (<h1 className="px-20 py-10 text-3xl">No items in marketplace</h1>);
 
   return (
     <div className="flex justify-center">
@@ -122,7 +86,7 @@ export default function Home() {
                 </div>
                 <div className="p-4 bg-black">
                   <p className="text-2xl font-bold text-white">{nft.price} ETH</p>
-                  <button className="mt-4 w-full bg-purple-500 text-white font-bold py-2 px-12 rounded" onClick={() => buyNft(nft)}>Buy</button>
+                  <button className="mt-4 w-full bg-purple-500 text-white font-bold py-2 px-12 rounded" onClick={() => buyNft(nft)}>{waiting ? 'Loading...' : 'Buy'}</button>
                 </div>
               </div>
             ))

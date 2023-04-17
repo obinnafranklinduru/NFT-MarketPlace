@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import axios from 'axios'
 import Web3Modal from 'web3modal'
 
-const marketplaceAddress = "0x9204ed613a2E9e352E6e6370e5fcD2437Ac7D818";
+import { marketplaceAddress } from "../../.config.js";
 import NFTMarketplace from '../../artifacts/contracts/NFTMarket.sol/NFTMarketplace.json';
 
 export default function ResellNFT() {
